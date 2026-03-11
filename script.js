@@ -156,6 +156,9 @@ function openModal(item) {
   document.getElementById('modal-price').textContent = `💰 ${item.priceRange}`;
   document.getElementById('modal-comment').textContent = item.editorComment;
   
+  const mapLink = document.getElementById('modal-map-link');
+  mapLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.name + ' ' + item.location)}`;
+  
   const badgeWrap = document.getElementById('modal-badges');
   badgeWrap.innerHTML = item.badges.map(badge => `
     <span class="badge ${badge.includes('화장실') || badge.includes('분리') || badge.includes('청결') || badge.includes('단독') || badge.includes('칸') ? 'badge-gold' : 'badge-green'}">
