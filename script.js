@@ -104,6 +104,10 @@ const closeMobileFilter = document.getElementById('close-mobile-filter');
 const desktopApplyBtn = document.getElementById('apply-filter-desktop');
 const mobileApplyBtn = document.getElementById('apply-filter-mobile');
 
+// --- State ---
+let bookmarkedIds = JSON.parse(localStorage.getItem('poopMichelinBookmarks')) || [];
+const BOOKMARK_ICON_SVG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2362B67F'%3E%3Cpath d='M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z'/%3E%3C/svg%3E";
+
 // --- Functions ---
 
 function renderGrid(data) {
@@ -127,7 +131,9 @@ function renderGrid(data) {
     card.innerHTML = `
       <div class="card-image-wrap">
         <img src="${item.image}" alt="${item.name}">
-        <div class="price-badge">${item.priceRange.split(' ~ ')[0]}</div>
+        <button class="card__bookmark-btn ${bookmarkedIds.includes(item.id) ? 'card__bookmark-btn--active' : ''}" data-id="${item.id}">
+          <img src="${BOOKMARK_ICON_SVG}" class="card__bookmark-icon">
+        </button>
       </div>
       <div class="card-content">
         <h3 class="card-title">${item.name}</h3>
@@ -145,12 +151,42 @@ function renderGrid(data) {
       </div>
     `;
     
-    card.addEventListener('click', () => openModal(item));
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.card__bookmark-btn')) {
+        e.stopPropagation();
+        toggleBookmark(item.id);
+      } else {
+        openModal(item);
+      }
+    });
     gridContainer.appendChild(card);
   });
 }
 
+function toggleBookmark(id) {
+  const index = bookmarkedIds.indexOf(id);
+  if (index > -1) {
+    bookmarkedIds.splice(index, 1);
+  } else {
+    bookmarkedIds.push(id);
+  }
+  localStorage.setItem('poopMichelinBookmarks', JSON.stringify(bookmarkedIds));
+  
+  // Sync Cards
+  const cardBtns = document.querySelectorAll(`.card__bookmark-btn[data-id="${id}"]`);
+  cardBtns.forEach(btn => {
+    btn.classList.toggle('card__bookmark-btn--active', bookmarkedIds.includes(id));
+  });
+
+  // Sync Modal
+  const modalBtn = document.getElementById('modal-bookmark-btn');
+  if (modalBtn && modalBtn.dataset.id == id) {
+    modalBtn.classList.toggle('modal__bookmark-btn--active', bookmarkedIds.includes(id));
+  }
+}
+
 function openModal(item) {
+  document.getElementById('modal-image').src = item.image;
   document.getElementById('modal-name').textContent = item.name;
   document.getElementById('modal-loc').textContent = `📍 ${item.location}`;
   document.getElementById('modal-price').textContent = `💰 ${item.priceRange}`;
@@ -173,6 +209,16 @@ function openModal(item) {
       <span style="font-weight:700;">${menu.price}</span>
     </li>
   `).join('');
+
+  const modalBookmarkBtn = document.getElementById('modal-bookmark-btn');
+  modalBookmarkBtn.dataset.id = item.id;
+  modalBookmarkBtn.className = `modal__bookmark-btn ${bookmarkedIds.includes(item.id) ? 'modal__bookmark-btn--active' : ''}`;
+  
+  // Remove old listener and add new one
+  modalBookmarkBtn.onclick = (e) => {
+    e.stopPropagation();
+    toggleBookmark(item.id);
+  };
 
   modalOverlay.classList.add('active');
   document.body.style.overflow = 'hidden';

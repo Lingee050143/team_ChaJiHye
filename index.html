@@ -115,26 +115,35 @@
     <div class="modal-content">
       <button class="modal-close" id="modal-close-btn">&times;</button>
       
-      <div class="modal-header">
-        <h2 class="modal-name" id="modal-name"></h2>
-        <div class="modal-meta">
-          <span id="modal-loc">📍</span>
-          <span id="modal-price">💰</span>
+      <div class="modal__image">
+        <img id="modal-image" src="" alt="식당 이미지">
+        <button class="modal__bookmark-btn" id="modal-bookmark-btn">
+          <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2362B67F'%3E%3Cpath d='M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z'/%3E%3C/svg%3E">
+        </button>
+      </div>
+      
+      <div class="modal-body-wrap">
+        <div class="modal-header">
+          <h2 class="modal-name" id="modal-name"></h2>
+          <div class="modal-meta">
+            <span id="modal-loc">📍</span>
+            <a id="modal-map-link" href="#" target="_blank" class="map-btn">
+              📍 지도 보기
+            </a>
+          </div>
+          <div class="modal__price" id="modal-price">💰</div>
+          <div class="card-badges" id="modal-badges"></div>
         </div>
-        <a id="modal-map-link" href="#" target="_blank" class="map-btn">
-          📍 지도 보기
-        </a>
-        <div class="card-badges" id="modal-badges"></div>
-      </div>
 
-      <div class="modal-section">
-        <h3 class="section-title">🥗 추천 메뉴</h3>
-        <ul class="menu-list" id="modal-menu"></ul>
-      </div>
+        <div class="modal-section">
+          <h3 class="section-title">🥗 추천 메뉴</h3>
+          <ul class="menu-list" id="modal-menu"></ul>
+        </div>
 
-      <div class="modal-section">
-        <h3 class="section-title">✍️ 에디터 한마디</h3>
-        <p class="editor-comment" id="modal-comment"></p>
+        <div class="modal-section">
+          <h3 class="section-title">✍️ 에디터 한마디</h3>
+          <p class="editor-comment" id="modal-comment"></p>
+        </div>
       </div>
     </div>
   </div>
