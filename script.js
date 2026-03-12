@@ -94,7 +94,7 @@ const searchInput = document.getElementById('search-input');
 const searchBtn = document.getElementById('search-btn');
 
 const modalOverlay = document.getElementById('modal-overlay');
-const closeModalBtn = document.getElementById('modal-close-btn');
+const scrapBtn = document.querySelector('.scrap-btn');
 
 const mobileFilterToggle = document.getElementById('mobile-filter-toggle');
 const mobileFilterOverlay = document.getElementById('mobile-filter-overlay');
@@ -106,7 +106,10 @@ const mobileApplyBtn = document.getElementById('apply-filter-mobile');
 
 // --- State ---
 let bookmarkedIds = JSON.parse(localStorage.getItem('poopMichelinBookmarks')) || [];
-const BOOKMARK_ICON_SVG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2362B67F'%3E%3Cpath d='M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z'/%3E%3C/svg%3E";
+let isScrapView = false;
+
+const BOOKMARK_FALSE = 'assets/button_bookmark_False.png';
+const BOOKMARK_TRUE = 'assets/button_bookmark_True.png';
 
 // --- Functions ---
 
@@ -114,16 +117,18 @@ function renderGrid(data) {
   gridContainer.innerHTML = '';
   
   if (data.length === 0) {
+    const emptyMsg = isScrapView ? "스크랩한 식당이 없습니다" : "검색 결과가 없습니다 😢";
     gridContainer.innerHTML = `
       <div style="grid-column: 1/-1; text-align: center; padding: 100px 0; color: var(--text-muted);">
-        <h3>검색 결과가 없습니다 😢</h3>
-        <p>다른 필터나 검색어를 사용해보세요.</p>
+        <h3>${emptyMsg}</h3>
+        ${!isScrapView ? '<p>다른 필터나 검색어를 사용해보세요.</p>' : ''}
       </div>
     `;
     return;
   }
 
   data.forEach((item, index) => {
+    const isBookmarked = bookmarkedIds.includes(item.id);
     const card = document.createElement('div');
     card.className = 'restaurant-card';
     card.style.animationDelay = `${index * 0.1}s`;
@@ -131,8 +136,8 @@ function renderGrid(data) {
     card.innerHTML = `
       <div class="card-image-wrap">
         <img src="${item.image}" alt="${item.name}">
-        <button class="card__bookmark-btn ${bookmarkedIds.includes(item.id) ? 'card__bookmark-btn--active' : ''}" data-id="${item.id}">
-          <img src="${BOOKMARK_ICON_SVG}" class="card__bookmark-icon">
+        <button class="card__bookmark-btn ${isBookmarked ? 'card__bookmark-btn--active' : ''}" data-id="${item.id}">
+          <img src="${isBookmarked ? BOOKMARK_TRUE : BOOKMARK_FALSE}" class="bookmark-icon">
         </button>
       </div>
       <div class="card-content">
@@ -164,24 +169,35 @@ function renderGrid(data) {
 }
 
 function toggleBookmark(id) {
-  const index = bookmarkedIds.indexOf(id);
-  if (index > -1) {
-    bookmarkedIds.splice(index, 1);
+  const isBookmarked = bookmarkedIds.includes(id);
+  if (isBookmarked) {
+    bookmarkedIds = bookmarkedIds.filter(bid => bid !== id);
   } else {
     bookmarkedIds.push(id);
   }
   localStorage.setItem('poopMichelinBookmarks', JSON.stringify(bookmarkedIds));
   
+  const nowBookmarked = bookmarkedIds.includes(id);
+
   // Sync Cards
   const cardBtns = document.querySelectorAll(`.card__bookmark-btn[data-id="${id}"]`);
   cardBtns.forEach(btn => {
-    btn.classList.toggle('card__bookmark-btn--active', bookmarkedIds.includes(id));
+    btn.classList.toggle('card__bookmark-btn--active', nowBookmarked);
+    const img = btn.querySelector('img');
+    if (img) img.src = nowBookmarked ? BOOKMARK_TRUE : BOOKMARK_FALSE;
   });
 
   // Sync Modal
   const modalBtn = document.getElementById('modal-bookmark-btn');
-  if (modalBtn && modalBtn.dataset.id == id) {
-    modalBtn.classList.toggle('modal__bookmark-btn--active', bookmarkedIds.includes(id));
+  if (modalBtn && Number(modalBtn.dataset.id) === id) {
+    modalBtn.classList.toggle('modal__bookmark-btn--active', nowBookmarked);
+    const img = modalBtn.querySelector('img');
+    if (img) img.src = nowBookmarked ? BOOKMARK_TRUE : BOOKMARK_FALSE;
+  }
+
+  // Section 10: If bookmark removed while in scrap view, remove card immediately.
+  if (isScrapView && !nowBookmarked) {
+    applyFilters(); // Re-apply filters to refresh the view (scrap view is a filter)
   }
 }
 
@@ -211,8 +227,15 @@ function openModal(item) {
   `).join('');
 
   const modalBookmarkBtn = document.getElementById('modal-bookmark-btn');
+  const isBookmarked = bookmarkedIds.includes(item.id);
   modalBookmarkBtn.dataset.id = item.id;
-  modalBookmarkBtn.className = `modal__bookmark-btn ${bookmarkedIds.includes(item.id) ? 'modal__bookmark-btn--active' : ''}`;
+  modalBookmarkBtn.className = `modal__bookmark-btn ${isBookmarked ? 'modal__bookmark-btn--active' : ''}`;
+  
+  const modalBookmarkImg = modalBookmarkBtn.querySelector('img');
+  if (modalBookmarkImg) {
+    modalBookmarkImg.src = isBookmarked ? BOOKMARK_TRUE : BOOKMARK_FALSE;
+    modalBookmarkImg.className = 'bookmark-icon';
+  }
   
   // Remove old listener and add new one
   modalBookmarkBtn.onclick = (e) => {
@@ -245,13 +268,16 @@ function applyFilters(isMobile = false) {
   const keyword = searchInput.value.trim().toLowerCase();
   
   let filtered = restaurants.filter(item => {
+    // Section 7: Scrap View filter
+    const matchesScrap = isScrapView ? bookmarkedIds.includes(item.id) : true;
+
     // Search keyword check
     const matchesKeyword = item.name.toLowerCase().includes(keyword) || item.location.toLowerCase().includes(keyword);
     
     // Filters check (must have ALL selected badges)
     const matchesFilters = activeFilters.every(f => item.badges.includes(f));
     
-    return matchesKeyword && matchesFilters;
+    return matchesScrap && matchesKeyword && matchesFilters;
   });
   
   renderGrid(filtered);
@@ -283,11 +309,18 @@ searchInput.addEventListener('keypress', (e) => {
 desktopApplyBtn.addEventListener('click', () => applyFilters(false));
 mobileApplyBtn.addEventListener('click', () => applyFilters(true));
 
+scrapBtn.addEventListener('click', () => {
+  isScrapView = !isScrapView;
+  scrapBtn.classList.toggle('scrap-btn--active', isScrapView);
+  applyFilters();
+});
+
 mobileFilterToggle.addEventListener('click', () => toggleMobileFilter(true));
 closeMobileFilter.addEventListener('click', () => toggleMobileFilter(false));
 filterBackdrop.addEventListener('click', () => toggleMobileFilter(false));
 
-closeModalBtn.addEventListener('click', closeModal);
+// Section 1: remove closeModalBtn listener
+// closeModalBtn.addEventListener('click', closeModal);
 modalOverlay.addEventListener('click', (e) => {
   if (e.target === modalOverlay) closeModal();
 });
